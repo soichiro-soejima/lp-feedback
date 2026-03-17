@@ -33,7 +33,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">LP フィードバックツール</h1>
+        <h1 className="text-2xl font-bold text-gray-800">修正依頼ツール</h1>
         <Link
           href="/new"
           className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
