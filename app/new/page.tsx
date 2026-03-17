@@ -11,7 +11,7 @@ type Mode = 'upload' | 'url'
 
 export default function NewProject() {
   const router = useRouter()
-  const [mode, setMode] = useState<Mode>('upload')
+  const [mode, setMode] = useState<Mode>('url')
   const [name, setName] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
