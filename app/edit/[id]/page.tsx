@@ -170,6 +170,8 @@ export default function EditPage() {
       top,
       width,
       height,
+      originX: 'left',
+      originY: 'top',
       fill: `${c.color}18`,
       stroke: c.color,
       strokeWidth: 2,

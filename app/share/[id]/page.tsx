@@ -54,6 +54,8 @@ export default function SharePage() {
 
             const commentRect = new Rect({
               left, top, width, height,
+              originX: 'left',
+              originY: 'top',
               fill: `${c.color}18`,
               stroke: c.color,
               strokeWidth: 2,
