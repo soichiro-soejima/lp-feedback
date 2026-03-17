@@ -12,9 +12,20 @@ export default function SharePage() {
   const id = params.id as string
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
   const [project, setProject] = useState<Project | null>(null)
   const [comments, setComments] = useState<CommentItem[]>([])
   const [notFound, setNotFound] = useState(false)
+  const [activeComment, setActiveComment] = useState<string | null>(null)
+
+  function scrollToComment(c: CommentItem) {
+    if (!scrollAreaRef.current) return
+    const container = scrollAreaRef.current
+    const targetTop = c.rect.top + c.rect.height / 2 - container.clientHeight / 2 + 24
+    const targetLeft = c.rect.left + c.rect.width / 2 - container.clientWidth / 2 + 24
+    container.scrollTo({ top: Math.max(0, targetTop), left: Math.max(0, targetLeft), behavior: 'smooth' })
+    setActiveComment(c.id)
+  }
 
   useEffect(() => { loadProject() }, [id])
 
@@ -121,7 +132,7 @@ export default function SharePage() {
       {/* メインエリア */}
       <div className="flex flex-1 overflow-hidden">
         {/* キャンバス */}
-        <div className="flex-1 overflow-auto p-6">
+        <div ref={scrollAreaRef} className="flex-1 overflow-auto p-6">
           <div className="inline-block">
             <canvas ref={canvasRef} className="shadow-xl rounded-lg" />
           </div>
@@ -140,7 +151,11 @@ export default function SharePage() {
               </div>
             )}
             {comments.map((c) => (
-              <div key={c.id} className="px-4 py-3 border-b border-gray-50 flex gap-3 items-start">
+              <div
+                key={c.id}
+                onClick={() => scrollToComment(c)}
+                className={`px-4 py-3 border-b border-gray-50 flex gap-3 items-start cursor-pointer hover:bg-gray-50 transition ${activeComment === c.id ? 'bg-blue-50' : ''}`}
+              >
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5"
                   style={{ backgroundColor: c.color }}
