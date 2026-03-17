@@ -121,16 +121,6 @@ export default function NewProject() {
           <label className="block text-sm font-medium text-gray-700 mb-2">画像の取得方法</label>
           <div className="flex gap-2">
             <button
-              onClick={() => { setMode('upload'); setFile(null); setPreview(null) }}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
-                mode === 'upload'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              画像をアップロード
-            </button>
-            <button
               onClick={() => { setMode('url'); setFile(null); setPreview(null) }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
                 mode === 'url'
@@ -139,6 +129,16 @@ export default function NewProject() {
               }`}
             >
               URLからスクショ取得
+            </button>
+            <button
+              onClick={() => { setMode('upload'); setFile(null); setPreview(null) }}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
+                mode === 'upload'
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              画像をアップロード
             </button>
           </div>
         </div>
