@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get('url')
   if (!url) return NextResponse.json({ error: 'url required' }, { status: 400 })
@@ -9,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   const apiUrl = `https://api.apiflash.com/v1/urltoimage?access_key=${accessKey}&url=${encodeURIComponent(url)}&format=png&full_page=true&width=1280`
 
-  const res = await fetch(apiUrl)
+  const res = await fetch(apiUrl, { cache: 'no-store' })
   if (!res.ok) {
     return NextResponse.json({ error: 'スクリーンショットの取得に失敗しました' }, { status: 500 })
   }
