@@ -97,6 +97,7 @@ export default function EditPage() {
     // ドラッグ描画イベント
     let isDrawing = false
     let startX = 0, startY = 0
+    let endX = 0, endY = 0
     let tempRect: any = null
 
     canvas.on('mouse:down', async (e: any) => {
@@ -105,6 +106,8 @@ export default function EditPage() {
       isDrawing = true
       startX = pointer.x
       startY = pointer.y
+      endX = pointer.x
+      endY = pointer.y
       const { Rect } = await import('fabric')
       tempRect = new Rect({
         left: startX,
@@ -127,11 +130,13 @@ export default function EditPage() {
       if (!isDrawing || !tempRect) return
       const pointer = e.viewportPoint ?? e.absolutePointer ?? e.pointer
       if (!pointer) return
-      const w = pointer.x - startX
-      const h = pointer.y - startY
+      endX = pointer.x
+      endY = pointer.y
+      const w = endX - startX
+      const h = endY - startY
       tempRect.set({
-        left: w < 0 ? pointer.x : startX,
-        top: h < 0 ? pointer.y : startY,
+        left: w < 0 ? endX : startX,
+        top: h < 0 ? endY : startY,
         width: Math.abs(w),
         height: Math.abs(h),
       })
@@ -139,14 +144,17 @@ export default function EditPage() {
       canvas.renderAll()
     })
 
-    canvas.on('mouse:up', (e: any) => {
+    canvas.on('mouse:up', () => {
       if (!isDrawing) return
       isDrawing = false
       if (!tempRect) return
-      const { left, top, width, height } = tempRect
       canvas.remove(tempRect)
       tempRect = null
       canvas.renderAll()
+      const left = Math.min(startX, endX)
+      const top = Math.min(startY, endY)
+      const width = Math.abs(endX - startX)
+      const height = Math.abs(endY - startY)
       if (width < 10 || height < 10) return
       setPendingRect({ left, top, width, height })
     })
