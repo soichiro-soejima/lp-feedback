@@ -188,7 +188,6 @@ export default function EditPage() {
       top: top - BADGE_R,
       selectable: false,
       evented: false,
-      data: { commentId: c.id },
     })
 
     canvas.add(commentRect, badge)
@@ -218,13 +217,16 @@ export default function EditPage() {
     setCommentInput('')
   }
 
-  function deleteComment(commentId: string) {
+  async function deleteComment(commentId: string) {
     const canvas = fabricRef.current
     if (!canvas) return
-    const toRemove = canvas.getObjects().filter((obj: any) => obj.data?.commentId === commentId)
-    toRemove.forEach((obj: any) => canvas.remove(obj))
+    const remaining = commentsRef.current.filter(c => c.id !== commentId)
+    canvas.remove(...canvas.getObjects())
+    for (const c of remaining) {
+      await drawCommentOnCanvas(canvas, c)
+    }
     canvas.renderAll()
-    setComments(prev => prev.filter(c => c.id !== commentId))
+    setComments(remaining)
   }
 
   async function save() {
