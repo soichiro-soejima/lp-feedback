@@ -101,7 +101,7 @@ export default function EditPage() {
     let tempRect: any = null
 
     canvas.on('mouse:down', async (e: any) => {
-      const pointer = e.viewportPoint ?? e.absolutePointer ?? e.pointer
+      const pointer = e.absolutePointer ?? e.viewportPoint ?? e.pointer
       if (!pointer) return
       isDrawing = true
       startX = pointer.x
@@ -128,7 +128,7 @@ export default function EditPage() {
 
     canvas.on('mouse:move', (e: any) => {
       if (!isDrawing || !tempRect) return
-      const pointer = e.viewportPoint ?? e.absolutePointer ?? e.pointer
+      const pointer = e.absolutePointer ?? e.viewportPoint ?? e.pointer
       if (!pointer) return
       endX = pointer.x
       endY = pointer.y
@@ -192,8 +192,10 @@ export default function EditPage() {
       originY: 'center',
     })
     const badge = new Group([badgeCircle, badgeLabel], {
-      left: left - BADGE_R,
-      top: top - BADGE_R,
+      left: left + BADGE_R,
+      top: top + BADGE_R,
+      originX: 'center',
+      originY: 'center',
       selectable: false,
       evented: false,
     })

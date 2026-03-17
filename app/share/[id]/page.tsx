@@ -75,8 +75,10 @@ export default function SharePage() {
               originY: 'center',
             })
             const badge = new Group([badgeCircle, badgeLabel], {
-              left: left - BADGE_R,
-              top: top - BADGE_R,
+              left: left + BADGE_R,
+              top: top + BADGE_R,
+              originX: 'center',
+              originY: 'center',
               selectable: false,
               evented: false,
             })
