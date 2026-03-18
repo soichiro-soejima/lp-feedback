@@ -34,6 +34,7 @@ export default function EditPage() {
   const [saving, setSaving] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [editingComment, setEditingComment] = useState<{ id: string; text: string } | null>(null)
 
   useEffect(() => { activeColorRef.current = activeColor }, [activeColor])
   useEffect(() => { commentsRef.current = comments }, [comments])
@@ -229,6 +230,12 @@ export default function EditPage() {
     setCommentInput('')
   }
 
+  async function updateComment(id: string, newText: string) {
+    const updated = commentsRef.current.map(c => c.id === id ? { ...c, text: newText } : c)
+    setComments(updated)
+    setEditingComment(null)
+  }
+
   async function deleteComment(commentId: string) {
     const canvas = fabricRef.current
     if (!canvas) return
@@ -323,7 +330,10 @@ export default function EditPage() {
                 >
                   {c.number}
                 </div>
-                <p className="text-sm text-gray-700 flex-1 leading-relaxed">{c.text}</p>
+                <p
+                  className="text-sm text-gray-700 flex-1 leading-relaxed cursor-pointer hover:text-blue-600"
+                  onClick={() => setEditingComment({ id: c.id, text: c.text })}
+                >{c.text}</p>
                 <button
                   onClick={() => deleteComment(c.id)}
                   className="text-gray-300 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition flex-shrink-0"
@@ -368,7 +378,7 @@ export default function EditPage() {
               value={commentInput}
               onChange={(e) => setCommentInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmComment() }
+                if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); confirmComment() }
                 if (e.key === 'Escape') { setPendingRect(null); setCommentInput('') }
               }}
               placeholder="修正指示を入力..."
@@ -387,7 +397,45 @@ export default function EditPage() {
                 disabled={!commentInput.trim()}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
               >
-                追加
+                追加（Ctrl+Enter）
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* コメント編集モーダル */}
+      {editingComment && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setEditingComment(null)}
+        >
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-96" onClick={(e) => e.stopPropagation()}>
+            <p className="font-semibold text-gray-800 mb-3">コメントを編集</p>
+            <textarea
+              autoFocus
+              value={editingComment.text}
+              onChange={(e) => setEditingComment({ ...editingComment, text: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); updateComment(editingComment.id, editingComment.text) }
+                if (e.key === 'Escape') { setEditingComment(null) }
+              }}
+              className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none outline-none focus:border-blue-400"
+              rows={4}
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button
+                onClick={() => setEditingComment(null)}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => updateComment(editingComment.id, editingComment.text)}
+                disabled={!editingComment.text.trim()}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+              >
+                保存（Ctrl+Enter）
               </button>
             </div>
           </div>
