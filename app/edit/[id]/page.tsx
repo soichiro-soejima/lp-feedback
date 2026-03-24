@@ -86,8 +86,24 @@ export default function EditPage() {
       try {
         const saved = JSON.parse(project!.canvas_json)
         if (saved.comments && Array.isArray(saved.comments)) {
-          setComments(saved.comments)
-          for (const c of saved.comments) {
+          const editCanvasWidth = saved.canvasWidth as number | undefined
+          const ratio = (editCanvasWidth && Math.abs(editCanvasWidth - canvas.width) > 1)
+            ? canvas.width / editCanvasWidth
+            : 1
+          // 現在のcanvas幅に合わせて座標を変換（保存時もこの座標で保存されるため一貫性を保つ）
+          const displayComments: CommentItem[] = ratio !== 1
+            ? saved.comments.map((c: CommentItem) => ({
+                ...c,
+                rect: {
+                  left: c.rect.left * ratio,
+                  top: c.rect.top * ratio,
+                  width: c.rect.width * ratio,
+                  height: c.rect.height * ratio,
+                },
+              }))
+            : saved.comments
+          setComments(displayComments)
+          for (const c of displayComments) {
             await drawCommentOnCanvas(canvas, c)
           }
           canvas.renderAll()
