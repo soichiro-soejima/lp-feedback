@@ -90,11 +90,11 @@ export default function EditPage() {
       try {
         const saved = JSON.parse(project!.canvas_json)
         if (saved.comments && Array.isArray(saved.comments)) {
+          // 常に元の座標を保持（補正UIから参照するため）
+          originalSavedCommentsRef.current = saved.comments
           const editCanvasWidth = saved.canvasWidth as number | undefined
           if (!editCanvasWidth) {
-            // 旧データ：canvasWidthなし → 補正UIを表示し元データを保持
             setIsLegacyData(true)
-            originalSavedCommentsRef.current = saved.comments
             setComments(saved.comments)
             for (const c of saved.comments) {
               await drawCommentOnCanvas(canvas, c)
@@ -267,9 +267,13 @@ export default function EditPage() {
 
   async function applyLegacyCorrection(originalScreenWidth: number) {
     const canvas = fabricRef.current
-    if (!canvas || originalSavedCommentsRef.current.length === 0) return
+    if (!canvas) return
+    const source = originalSavedCommentsRef.current.length > 0
+      ? originalSavedCommentsRef.current
+      : commentsRef.current
+    if (source.length === 0) return
     const ratio = canvas.width / (originalScreenWidth - 360)
-    const corrected: CommentItem[] = originalSavedCommentsRef.current.map((c: CommentItem) => ({
+    const corrected: CommentItem[] = source.map((c: CommentItem) => ({
       ...c,
       rect: {
         left: c.rect.left * ratio,
