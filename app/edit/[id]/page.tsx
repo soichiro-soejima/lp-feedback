@@ -251,7 +251,10 @@ export default function EditPage() {
   async function save() {
     if (!project) return
     setSaving(true)
-    const data = { comments: commentsRef.current }
+    const data = {
+      comments: commentsRef.current,
+      canvasWidth: fabricRef.current?.width ?? null,
+    }
     const { error } = await supabase
       .from('projects')
       .update({ canvas_json: JSON.stringify(data) })

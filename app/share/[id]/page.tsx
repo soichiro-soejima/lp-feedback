@@ -13,6 +13,7 @@ export default function SharePage() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const canvasRatioRef = useRef<number>(1)
   const [project, setProject] = useState<Project | null>(null)
   const [comments, setComments] = useState<CommentItem[]>([])
   const [notFound, setNotFound] = useState(false)
@@ -20,9 +21,10 @@ export default function SharePage() {
 
   function scrollToComment(c: CommentItem) {
     if (!scrollAreaRef.current) return
+    const ratio = canvasRatioRef.current
     const container = scrollAreaRef.current
-    const targetTop = c.rect.top + c.rect.height / 2 - container.clientHeight / 2 + 24
-    const targetLeft = c.rect.left + c.rect.width / 2 - container.clientWidth / 2 + 24
+    const targetTop = c.rect.top * ratio + c.rect.height * ratio / 2 - container.clientHeight / 2 + 24
+    const targetLeft = c.rect.left * ratio + c.rect.width * ratio / 2 - container.clientWidth / 2 + 24
     container.scrollTo({ top: Math.max(0, targetTop), left: Math.max(0, targetLeft), behavior: 'smooth' })
     setActiveComment(c.id)
   }
@@ -59,9 +61,17 @@ export default function SharePage() {
         const saved = JSON.parse(project!.canvas_json)
         if (saved.comments && Array.isArray(saved.comments)) {
           setComments(saved.comments)
+          const editCanvasWidth = saved.canvasWidth as number | undefined
+          const ratio = (editCanvasWidth && Math.abs(editCanvasWidth - canvas.width) > 1)
+            ? canvas.width / editCanvasWidth
+            : 1
+          canvasRatioRef.current = ratio
           const BADGE_R = 11
           for (const c of saved.comments as CommentItem[]) {
-            const { left, top, width, height } = c.rect
+            const left = c.rect.left * ratio
+            const top = c.rect.top * ratio
+            const width = c.rect.width * ratio
+            const height = c.rect.height * ratio
 
             const commentRect = new Rect({
               left, top, width, height,
