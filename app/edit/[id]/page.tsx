@@ -95,15 +95,16 @@ export default function EditPage() {
           const editCanvasWidth = saved.canvasWidth as number | undefined
           if (!editCanvasWidth) {
             setIsLegacyData(true)
-            setComments(saved.comments)
-            for (const c of saved.comments) {
+            const renumbered = saved.comments.map((c: CommentItem, i: number) => ({ ...c, number: i + 1 }))
+            setComments(renumbered)
+            for (const c of renumbered) {
               await drawCommentOnCanvas(canvas, c)
             }
           } else {
             const ratio = Math.abs(editCanvasWidth - canvas.width) > 1
               ? canvas.width / editCanvasWidth
               : 1
-            const displayComments: CommentItem[] = ratio !== 1
+            const scaled: CommentItem[] = ratio !== 1
               ? saved.comments.map((c: CommentItem) => ({
                   ...c,
                   rect: {
@@ -114,6 +115,7 @@ export default function EditPage() {
                   },
                 }))
               : saved.comments
+            const displayComments = scaled.map((c: CommentItem, i: number) => ({ ...c, number: i + 1 }))
             setComments(displayComments)
             for (const c of displayComments) {
               await drawCommentOnCanvas(canvas, c)
