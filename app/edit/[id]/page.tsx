@@ -37,6 +37,7 @@ export default function EditPage() {
   const [copied, setCopied] = useState(false)
   const [editingComment, setEditingComment] = useState<{ id: string; text: string } | null>(null)
   const [isLegacyData, setIsLegacyData] = useState(false)
+  const [showCorrection, setShowCorrection] = useState(false)
   const [customScreenWidth, setCustomScreenWidth] = useState('')
 
   useEffect(() => { activeColorRef.current = activeColor }, [activeColor])
@@ -365,9 +366,25 @@ export default function EditPage() {
 
         {/* サイドバー */}
         <div className="w-72 bg-white border-l border-gray-200 flex flex-col flex-shrink-0">
-          {isLegacyData && (
+          <div className="px-4 py-3 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-700">コメント一覧</p>
+                <p className="text-xs text-gray-400 mt-0.5">範囲をドラッグして囲んでください</p>
+              </div>
+              {isLegacyData && !showCorrection && (
+                <span className="text-xs text-amber-600 font-medium animate-pulse">⚠ ズレあり?</span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowCorrection(v => !v)}
+              className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              {showCorrection ? '▲ 位置補正を閉じる' : '▼ 位置ずれを補正する'}
+            </button>
+          </div>
+          {showCorrection && (
             <div className="px-3 py-2 bg-amber-50 border-b border-amber-200">
-              <p className="text-xs font-semibold text-amber-800 mb-1">⚠ 位置ずれ補正</p>
               <p className="text-xs text-amber-700 mb-2">作成時の画面幅を選択して補正してください</p>
               <div className="flex flex-wrap gap-1 mb-1">
                 {[1920, 1440, 1366, 1280].map(w => (
@@ -380,7 +397,7 @@ export default function EditPage() {
                   </button>
                 ))}
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 mt-1">
                 <input
                   type="number"
                   value={customScreenWidth}
@@ -398,10 +415,6 @@ export default function EditPage() {
               <p className="text-xs text-amber-500 mt-1">位置が合ったら「保存してURL発行」で確定</p>
             </div>
           )}
-          <div className="px-4 py-3 border-b border-gray-100">
-            <p className="text-sm font-semibold text-gray-700">コメント一覧</p>
-            <p className="text-xs text-gray-400 mt-0.5">範囲をドラッグして囲んでください</p>
-          </div>
           <div className="flex-1 overflow-y-auto">
             {comments.length === 0 && (
               <div className="p-4 text-center text-gray-400 text-sm mt-8">
