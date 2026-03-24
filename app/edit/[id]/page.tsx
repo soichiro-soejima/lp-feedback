@@ -25,6 +25,7 @@ export default function EditPage() {
   const fabricRef = useRef<any>(null)
   const activeColorRef = useRef<Color>('#ef4444')
   const commentsRef = useRef<CommentItem[]>([])
+  const originalSavedCommentsRef = useRef<CommentItem[]>([])
 
   const [project, setProject] = useState<Project | null>(null)
   const [activeColor, setActiveColor] = useState<Color>('#ef4444')
@@ -35,6 +36,8 @@ export default function EditPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [editingComment, setEditingComment] = useState<{ id: string; text: string } | null>(null)
+  const [isLegacyData, setIsLegacyData] = useState(false)
+  const [customScreenWidth, setCustomScreenWidth] = useState('')
 
   useEffect(() => { activeColorRef.current = activeColor }, [activeColor])
   useEffect(() => { commentsRef.current = comments }, [comments])
@@ -87,24 +90,33 @@ export default function EditPage() {
         const saved = JSON.parse(project!.canvas_json)
         if (saved.comments && Array.isArray(saved.comments)) {
           const editCanvasWidth = saved.canvasWidth as number | undefined
-          const ratio = (editCanvasWidth && Math.abs(editCanvasWidth - canvas.width) > 1)
-            ? canvas.width / editCanvasWidth
-            : 1
-          // 現在のcanvas幅に合わせて座標を変換（保存時もこの座標で保存されるため一貫性を保つ）
-          const displayComments: CommentItem[] = ratio !== 1
-            ? saved.comments.map((c: CommentItem) => ({
-                ...c,
-                rect: {
-                  left: c.rect.left * ratio,
-                  top: c.rect.top * ratio,
-                  width: c.rect.width * ratio,
-                  height: c.rect.height * ratio,
-                },
-              }))
-            : saved.comments
-          setComments(displayComments)
-          for (const c of displayComments) {
-            await drawCommentOnCanvas(canvas, c)
+          if (!editCanvasWidth) {
+            // 旧データ：canvasWidthなし → 補正UIを表示し元データを保持
+            setIsLegacyData(true)
+            originalSavedCommentsRef.current = saved.comments
+            setComments(saved.comments)
+            for (const c of saved.comments) {
+              await drawCommentOnCanvas(canvas, c)
+            }
+          } else {
+            const ratio = Math.abs(editCanvasWidth - canvas.width) > 1
+              ? canvas.width / editCanvasWidth
+              : 1
+            const displayComments: CommentItem[] = ratio !== 1
+              ? saved.comments.map((c: CommentItem) => ({
+                  ...c,
+                  rect: {
+                    left: c.rect.left * ratio,
+                    top: c.rect.top * ratio,
+                    width: c.rect.width * ratio,
+                    height: c.rect.height * ratio,
+                  },
+                }))
+              : saved.comments
+            setComments(displayComments)
+            for (const c of displayComments) {
+              await drawCommentOnCanvas(canvas, c)
+            }
           }
           canvas.renderAll()
         }
@@ -252,6 +264,28 @@ export default function EditPage() {
     setEditingComment(null)
   }
 
+  async function applyLegacyCorrection(originalScreenWidth: number) {
+    const canvas = fabricRef.current
+    if (!canvas || originalSavedCommentsRef.current.length === 0) return
+    const ratio = canvas.width / (originalScreenWidth - 360)
+    const corrected: CommentItem[] = originalSavedCommentsRef.current.map((c: CommentItem) => ({
+      ...c,
+      rect: {
+        left: c.rect.left * ratio,
+        top: c.rect.top * ratio,
+        width: c.rect.width * ratio,
+        height: c.rect.height * ratio,
+      },
+    }))
+    canvas.remove(...canvas.getObjects())
+    setComments(corrected)
+    commentsRef.current = corrected
+    for (const c of corrected) {
+      await drawCommentOnCanvas(canvas, c)
+    }
+    canvas.renderAll()
+  }
+
   async function deleteComment(commentId: string) {
     const canvas = fabricRef.current
     if (!canvas) return
@@ -331,6 +365,39 @@ export default function EditPage() {
 
         {/* サイドバー */}
         <div className="w-72 bg-white border-l border-gray-200 flex flex-col flex-shrink-0">
+          {isLegacyData && (
+            <div className="px-3 py-2 bg-amber-50 border-b border-amber-200">
+              <p className="text-xs font-semibold text-amber-800 mb-1">⚠ 位置ずれ補正</p>
+              <p className="text-xs text-amber-700 mb-2">作成時の画面幅を選択して補正してください</p>
+              <div className="flex flex-wrap gap-1 mb-1">
+                {[1920, 1440, 1366, 1280].map(w => (
+                  <button
+                    key={w}
+                    onClick={() => applyLegacyCorrection(w)}
+                    className="text-xs px-2 py-1 bg-white border border-amber-300 rounded hover:bg-amber-100 transition"
+                  >
+                    {w}px
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1">
+                <input
+                  type="number"
+                  value={customScreenWidth}
+                  onChange={e => setCustomScreenWidth(e.target.value)}
+                  placeholder="カスタム幅"
+                  className="text-xs w-24 px-2 py-1 border border-amber-300 rounded outline-none"
+                />
+                <button
+                  onClick={() => customScreenWidth && applyLegacyCorrection(Number(customScreenWidth))}
+                  className="text-xs px-2 py-1 bg-amber-500 text-white rounded hover:bg-amber-600 transition"
+                >
+                  適用
+                </button>
+              </div>
+              <p className="text-xs text-amber-500 mt-1">位置が合ったら「保存してURL発行」で確定</p>
+            </div>
+          )}
           <div className="px-4 py-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-700">コメント一覧</p>
             <p className="text-xs text-gray-400 mt-0.5">範囲をドラッグして囲んでください</p>
