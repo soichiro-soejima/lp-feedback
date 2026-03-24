@@ -241,7 +241,9 @@ export default function EditPage() {
     if (!canvas) return
 
     const commentId = crypto.randomUUID()
-    const nextNumber = commentsRef.current.length + 1
+    const nextNumber = commentsRef.current.length === 0
+      ? 1
+      : Math.max(...commentsRef.current.map(c => c.number)) + 1
 
     const newComment: CommentItem = {
       id: commentId,
@@ -294,13 +296,15 @@ export default function EditPage() {
   async function deleteComment(commentId: string) {
     const canvas = fabricRef.current
     if (!canvas) return
-    const remaining = commentsRef.current.filter(c => c.id !== commentId)
+    const renumbered = commentsRef.current
+      .filter(c => c.id !== commentId)
+      .map((c, i) => ({ ...c, number: i + 1 }))
     canvas.remove(...canvas.getObjects())
-    for (const c of remaining) {
+    for (const c of renumbered) {
       await drawCommentOnCanvas(canvas, c)
     }
     canvas.renderAll()
-    setComments(remaining)
+    setComments(renumbered)
   }
 
   async function save() {
