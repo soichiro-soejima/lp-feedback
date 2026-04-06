@@ -8,12 +8,28 @@ import { supabase, type Project } from '@/lib/supabase'
 
 type Color = '#ef4444' | '#3b82f6' | '#eab308' | '#1f2937'
 
+export type Attachment = {
+  name: string
+  url: string
+  mimeType: string
+  path: string
+}
+
 export type CommentItem = {
   id: string
   number: number
   text: string
   color: Color
   rect: { left: number; top: number; width: number; height: number }
+  attachments?: Attachment[]
+}
+
+type EditingComment = {
+  id: string
+  text: string
+  attachments: Attachment[]
+  newFiles: File[]
+  deletedPaths: string[]
 }
 
 export default function EditPage() {
@@ -32,10 +48,12 @@ export default function EditPage() {
   const [comments, setComments] = useState<CommentItem[]>([])
   const [pendingRect, setPendingRect] = useState<CommentItem['rect'] | null>(null)
   const [commentInput, setCommentInput] = useState('')
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const [editingComment, setEditingComment] = useState<{ id: string; text: string } | null>(null)
+  const [editingComment, setEditingComment] = useState<EditingComment | null>(null)
   const [isLegacyData, setIsLegacyData] = useState(false)
   const [showCorrection, setShowCorrection] = useState(false)
   const [customScreenWidth, setCustomScreenWidth] = useState('')
@@ -85,12 +103,10 @@ export default function EditPage() {
     canvas.backgroundImage = img
     canvas.renderAll()
 
-    // 保存済みデータの復元
     if (project!.canvas_json) {
       try {
         const saved = JSON.parse(project!.canvas_json)
         if (saved.comments && Array.isArray(saved.comments)) {
-          // 常に元の座標を保持（補正UIから参照するため）
           originalSavedCommentsRef.current = saved.comments
           const editCanvasWidth = saved.canvasWidth as number | undefined
           if (!editCanvasWidth) {
@@ -126,7 +142,6 @@ export default function EditPage() {
       } catch {}
     }
 
-    // ドラッグ描画イベント
     let isDrawing = false
     let startX = 0, startY = 0
     let endX = 0, endY = 0
@@ -237,15 +252,31 @@ export default function EditPage() {
     canvas.add(commentRect, badge)
   }
 
+  async function uploadFiles(files: File[], commentId: string): Promise<Attachment[]> {
+    const results: Attachment[] = []
+    for (const file of files) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `attachments/${id}/${commentId}/${Date.now()}_${safeName}`
+      const { error } = await supabase.storage.from('feedback-images').upload(path, file)
+      if (error) continue
+      const { data } = supabase.storage.from('feedback-images').getPublicUrl(path)
+      results.push({ name: file.name, url: data.publicUrl, mimeType: file.type, path })
+    }
+    return results
+  }
+
   async function confirmComment() {
     if (!commentInput.trim() || !pendingRect) return
     const canvas = fabricRef.current
     if (!canvas) return
 
+    setUploading(true)
     const commentId = crypto.randomUUID()
     const nextNumber = commentsRef.current.length === 0
       ? 1
       : Math.max(...commentsRef.current.map(c => c.number)) + 1
+
+    const uploaded = await uploadFiles(pendingFiles, commentId)
 
     const newComment: CommentItem = {
       id: commentId,
@@ -253,6 +284,7 @@ export default function EditPage() {
       text: commentInput.trim(),
       color: activeColorRef.current,
       rect: pendingRect,
+      attachments: uploaded.length > 0 ? uploaded : undefined,
     }
 
     await drawCommentOnCanvas(canvas, newComment)
@@ -261,12 +293,28 @@ export default function EditPage() {
     setComments(prev => [...prev, newComment])
     setPendingRect(null)
     setCommentInput('')
+    setPendingFiles([])
+    setUploading(false)
   }
 
-  async function updateComment(id: string, newText: string) {
-    const updated = commentsRef.current.map(c => c.id === id ? { ...c, text: newText } : c)
+  async function updateComment(data: EditingComment) {
+    setUploading(true)
+
+    for (const path of data.deletedPaths) {
+      await supabase.storage.from('feedback-images').remove([path])
+    }
+
+    const newlyUploaded = await uploadFiles(data.newFiles, data.id)
+    const updatedAttachments = [...data.attachments, ...newlyUploaded]
+
+    const updated = commentsRef.current.map(c =>
+      c.id === data.id
+        ? { ...c, text: data.text, attachments: updatedAttachments.length > 0 ? updatedAttachments : undefined }
+        : c
+    )
     setComments(updated)
     setEditingComment(null)
+    setUploading(false)
   }
 
   async function applyLegacyCorrection(originalScreenWidth: number) {
@@ -298,6 +346,12 @@ export default function EditPage() {
   async function deleteComment(commentId: string) {
     const canvas = fabricRef.current
     if (!canvas) return
+
+    const target = commentsRef.current.find(c => c.id === commentId)
+    if (target?.attachments && target.attachments.length > 0) {
+      await supabase.storage.from('feedback-images').remove(target.attachments.map(a => a.path))
+    }
+
     const renumbered = commentsRef.current
       .filter(c => c.id !== commentId)
       .map((c, i) => ({ ...c, number: i + 1 }))
@@ -439,10 +493,21 @@ export default function EditPage() {
                 >
                   {c.number}
                 </div>
-                <p
-                  className="text-sm text-gray-700 flex-1 leading-relaxed cursor-pointer hover:text-blue-600"
-                  onClick={() => setEditingComment({ id: c.id, text: c.text })}
-                >{c.text}</p>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="text-sm text-gray-700 leading-relaxed cursor-pointer hover:text-blue-600"
+                    onClick={() => setEditingComment({
+                      id: c.id,
+                      text: c.text,
+                      attachments: c.attachments ?? [],
+                      newFiles: [],
+                      deletedPaths: [],
+                    })}
+                  >{c.text}</p>
+                  {c.attachments && c.attachments.length > 0 && (
+                    <p className="text-xs text-gray-400 mt-0.5">📎 {c.attachments.length}件</p>
+                  )}
+                </div>
                 <button
                   onClick={() => deleteComment(c.id)}
                   className="text-gray-300 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition flex-shrink-0"
@@ -478,7 +543,7 @@ export default function EditPage() {
       {pendingRect && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => { setPendingRect(null); setCommentInput('') }}
+          onClick={() => { setPendingRect(null); setCommentInput(''); setPendingFiles([]) }}
         >
           <div className="bg-white rounded-xl shadow-2xl p-6 w-96" onClick={(e) => e.stopPropagation()}>
             <p className="font-semibold text-gray-800 mb-3">コメントを入力</p>
@@ -488,25 +553,55 @@ export default function EditPage() {
               onChange={(e) => setCommentInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); confirmComment() }
-                if (e.key === 'Escape') { setPendingRect(null); setCommentInput('') }
+                if (e.key === 'Escape') { setPendingRect(null); setCommentInput(''); setPendingFiles([]) }
               }}
               placeholder="修正指示を入力..."
               className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none outline-none focus:border-blue-400"
               rows={4}
             />
-            <div className="flex justify-end gap-2 mt-3">
+            {/* ファイル添付 */}
+            <div className="mt-3">
+              <label className="inline-flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) setPendingFiles(prev => [...prev, ...Array.from(e.target.files!)])
+                    e.target.value = ''
+                  }}
+                />
+                <span>📎</span>
+                <span>ファイルを添付（画像・PDF）</span>
+              </label>
+              {pendingFiles.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {pendingFiles.map((f, i) => (
+                    <div key={i} className="flex items-center gap-1 text-xs bg-gray-100 rounded px-2 py-1 max-w-full">
+                      <span className="truncate max-w-[140px]">{f.name}</span>
+                      <button
+                        onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
+                        className="text-gray-400 hover:text-red-400 flex-shrink-0"
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
               <button
-                onClick={() => { setPendingRect(null); setCommentInput('') }}
+                onClick={() => { setPendingRect(null); setCommentInput(''); setPendingFiles([]) }}
                 className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
               >
                 キャンセル
               </button>
               <button
                 onClick={confirmComment}
-                disabled={!commentInput.trim()}
+                disabled={!commentInput.trim() || uploading}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
               >
-                追加（Ctrl+Enter）
+                {uploading ? 'アップロード中...' : '追加（Ctrl+Enter）'}
               </button>
             </div>
           </div>
@@ -526,13 +621,84 @@ export default function EditPage() {
               value={editingComment.text}
               onChange={(e) => setEditingComment({ ...editingComment, text: e.target.value })}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); updateComment(editingComment.id, editingComment.text) }
+                if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); updateComment(editingComment) }
                 if (e.key === 'Escape') { setEditingComment(null) }
               }}
               className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none outline-none focus:border-blue-400"
               rows={4}
             />
-            <div className="flex justify-end gap-2 mt-3">
+
+            {/* 既存の添付ファイル */}
+            {editingComment.attachments.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-gray-500 mb-1.5">添付ファイル</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {editingComment.attachments.map((a, i) => (
+                    <div key={i} className="relative group/att">
+                      {a.mimeType.startsWith('image/') ? (
+                        <img
+                          src={a.url}
+                          alt={a.name}
+                          className="w-14 h-14 object-cover rounded border border-gray-200"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-1 text-xs bg-gray-100 rounded px-2 py-1.5">
+                          <span>📄</span>
+                          <span className="truncate max-w-[100px]">{a.name}</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => setEditingComment({
+                          ...editingComment,
+                          attachments: editingComment.attachments.filter((_, j) => j !== i),
+                          deletedPaths: [...editingComment.deletedPaths, a.path],
+                        })}
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-xs items-center justify-center hidden group-hover/att:flex leading-none"
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 新規ファイル追加 */}
+            <div className="mt-3">
+              <label className="inline-flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) setEditingComment({
+                      ...editingComment,
+                      newFiles: [...editingComment.newFiles, ...Array.from(e.target.files!)],
+                    })
+                    e.target.value = ''
+                  }}
+                />
+                <span>📎</span>
+                <span>ファイルを追加（画像・PDF）</span>
+              </label>
+              {editingComment.newFiles.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {editingComment.newFiles.map((f, i) => (
+                    <div key={i} className="flex items-center gap-1 text-xs bg-blue-50 rounded px-2 py-1">
+                      <span className="truncate max-w-[140px]">{f.name}</span>
+                      <button
+                        onClick={() => setEditingComment({
+                          ...editingComment,
+                          newFiles: editingComment.newFiles.filter((_, j) => j !== i),
+                        })}
+                        className="text-gray-400 hover:text-red-400 flex-shrink-0"
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
               <button
                 onClick={() => setEditingComment(null)}
                 className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
@@ -540,11 +706,11 @@ export default function EditPage() {
                 キャンセル
               </button>
               <button
-                onClick={() => updateComment(editingComment.id, editingComment.text)}
-                disabled={!editingComment.text.trim()}
+                onClick={() => updateComment(editingComment)}
+                disabled={!editingComment.text.trim() || uploading}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
               >
-                保存（Ctrl+Enter）
+                {uploading ? 'アップロード中...' : '保存（Ctrl+Enter）'}
               </button>
             </div>
           </div>

@@ -172,7 +172,35 @@ export default function SharePage() {
                 >
                   {c.number}
                 </div>
-                <p className="text-sm text-gray-700 flex-1 leading-relaxed">{c.text}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-700 leading-relaxed">{c.text}</p>
+                  {c.attachments && c.attachments.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      {c.attachments.map((a, i) => (
+                        a.mimeType.startsWith('image/') ? (
+                          <a key={i} href={a.url} target="_blank" rel="noopener noreferrer">
+                            <img
+                              src={a.url}
+                              alt={a.name}
+                              className="w-16 h-16 object-cover rounded border border-gray-200 hover:opacity-80 transition"
+                            />
+                          </a>
+                        ) : (
+                          <a
+                            key={i}
+                            href={a.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded px-2 py-1 border border-blue-200 transition"
+                          >
+                            <span>📄</span>
+                            <span className="truncate max-w-[120px]">{a.name}</span>
+                          </a>
+                        )
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
