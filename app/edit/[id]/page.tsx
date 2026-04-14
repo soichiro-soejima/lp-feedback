@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase, type Project } from '@/lib/supabase'
 
-type Color = '#ef4444' | '#3b82f6' | '#eab308' | '#1f2937'
+type Color = '#ef4444' | '#3b82f6' | '#eab308'
 
 export type Attachment = {
   name: string
@@ -51,7 +51,6 @@ export default function EditPage() {
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [editingComment, setEditingComment] = useState<EditingComment | null>(null)
   const [isLegacyData, setIsLegacyData] = useState(false)
@@ -370,22 +369,20 @@ export default function EditPage() {
       comments: commentsRef.current,
       canvasWidth: fabricRef.current?.width ?? null,
     }
-    const { error } = await supabase
+    await supabase
       .from('projects')
       .update({ canvas_json: JSON.stringify(data) })
       .eq('id', id)
     setSaving(false)
-    if (!error) setShareUrl(`${window.location.origin}/share/${id}`)
   }
 
   async function copyUrl() {
-    if (!shareUrl) return
-    await navigator.clipboard.writeText(shareUrl)
+    await navigator.clipboard.writeText(`${window.location.origin}/share/${id}`)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const colors: Color[] = ['#ef4444', '#3b82f6', '#eab308', '#1f2937']
+  const colors: Color[] = ['#ef4444', '#3b82f6', '#eab308']
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
@@ -398,21 +395,19 @@ export default function EditPage() {
           {project?.name}
         </span>
         <div className="flex-1" />
-        {shareUrl && (
-          <div className="flex items-center gap-2">
-            <input
-              readOnly
-              value={shareUrl}
-              className="text-xs bg-green-50 border border-green-200 rounded px-2 py-1.5 text-green-800 font-mono w-64 truncate"
-            />
-            <button
-              onClick={copyUrl}
-              className="text-xs px-2 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 whitespace-nowrap"
-            >
-              {copied ? '✓ コピー済み' : 'コピー'}
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <input
+            readOnly
+            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/${id}`}
+            className="text-xs bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-gray-600 font-mono w-64 truncate"
+          />
+          <button
+            onClick={copyUrl}
+            className="text-xs px-2 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-700 whitespace-nowrap"
+          >
+            {copied ? '✓ コピー済み' : 'コピー'}
+          </button>
+        </div>
         <div className="flex gap-1">
           {colors.map((c) => (
             <button
