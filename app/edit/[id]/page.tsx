@@ -265,7 +265,8 @@ export default function EditPage() {
   }
 
   async function confirmComment() {
-    if (!commentInput.trim() || !pendingRect) return
+    if (!commentInput.trim() && pendingFiles.length === 0) return
+    if (!pendingRect) return
     const canvas = fabricRef.current
     if (!canvas) return
 
@@ -590,7 +591,7 @@ export default function EditPage() {
               </button>
               <button
                 onClick={confirmComment}
-                disabled={!commentInput.trim() || uploading}
+                disabled={(!commentInput.trim() && pendingFiles.length === 0) || uploading}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
               >
                 {uploading ? 'アップロード中...' : '追加（Ctrl+Enter）'}
