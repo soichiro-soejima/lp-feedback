@@ -398,6 +398,21 @@ export default function EditPage() {
           {project?.name}
         </span>
         <div className="flex-1" />
+        {shareUrl && (
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              value={shareUrl}
+              className="text-xs bg-green-50 border border-green-200 rounded px-2 py-1.5 text-green-800 font-mono w-64 truncate"
+            />
+            <button
+              onClick={copyUrl}
+              className="text-xs px-2 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 whitespace-nowrap"
+            >
+              {copied ? '✓ コピー済み' : 'コピー'}
+            </button>
+          </div>
+        )}
         <div className="flex gap-1">
           {colors.map((c) => (
             <button
@@ -421,15 +436,8 @@ export default function EditPage() {
 
       {/* メインエリア */}
       <div className="flex flex-1 overflow-hidden">
-        {/* キャンバス */}
-        <div className="flex-1 overflow-auto p-6">
-          <div className="inline-block">
-            <canvas ref={canvasRef} className="shadow-xl rounded-lg" />
-          </div>
-        </div>
-
         {/* サイドバー */}
-        <div className="w-72 bg-white border-l border-gray-200 flex flex-col flex-shrink-0">
+        <div className="w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
           <div className="px-4 py-3 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <div>
@@ -518,24 +526,13 @@ export default function EditPage() {
             ))}
           </div>
 
-          {shareUrl && (
-            <div className="p-3 border-t border-gray-200 bg-green-50">
-              <p className="text-xs text-green-700 font-medium mb-2">共有URL発行済み</p>
-              <div className="flex gap-2">
-                <input
-                  readOnly
-                  value={shareUrl}
-                  className="flex-1 text-xs bg-white border border-green-200 rounded px-2 py-1 text-green-800 font-mono truncate"
-                />
-                <button
-                  onClick={copyUrl}
-                  className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 whitespace-nowrap"
-                >
-                  {copied ? '✓' : 'コピー'}
-                </button>
-              </div>
-            </div>
-          )}
+        </div>
+
+        {/* キャンバス */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="inline-block">
+            <canvas ref={canvasRef} className="shadow-xl rounded-lg" />
+          </div>
         </div>
       </div>
 
