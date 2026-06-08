@@ -499,7 +499,7 @@ export default function EditPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-sm text-gray-700 leading-relaxed cursor-pointer hover:text-blue-600"
+                    className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap cursor-pointer hover:text-blue-600"
                     onClick={() => setEditingComment({
                       id: c.id,
                       text: c.text,

@@ -173,7 +173,7 @@ export default function SharePage() {
                   {c.number}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-700 leading-relaxed">{c.text}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{c.text}</p>
                   {c.attachments && c.attachments.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
                       {c.attachments.map((a, i) => (
